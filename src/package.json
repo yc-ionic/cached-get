@@ -1,0 +1,26 @@
+{
+  "name": "@yci/cached-get",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yc-ionic/cached-get.git"
+  },
+  "author": {
+    "name": "Yu Chen",
+    "email": "yu.chen@live.ie"
+  },
+  "keywords": [
+    "angular"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yc-ionic/cached-get.git/issues"
+  },
+  "main": "yci-cached-get.umd.js",
+  "module": "yci-cached-get.js",
+  "jsnext:main": "yci-cached-get.js",
+  "typings": "yci-cached-get.d.ts",
+  "peerDependencies": {
+    "@ionic/storage": "^2.0.1"
+  }
+}
