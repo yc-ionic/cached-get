@@ -84,7 +84,9 @@ gulp.task('rollup:fesm', function () {
       // See https://github.com/rollup/rollup/wiki/JavaScript-API#external
       external: [
         '@angular/core',
-        '@angular/common'
+        '@angular/http',
+        '@ionic/storage',
+        'rxjs/Subject'
       ],
 
       // Format of generated bundle
@@ -111,13 +113,15 @@ gulp.task('rollup:umd', function () {
       // accessed by Rollup or produced by plugins further down the chain.
       // This prevents errors like: 'path/file' does not exist in the hypothetical file system
       // when subdirectories are used in the `src` directory.
-      allowRealFiles: true,
+      // allowRealFiles: true,
 
       // A list of IDs of modules that should remain external to the bundle
       // See https://github.com/rollup/rollup/wiki/JavaScript-API#external
       external: [
         '@angular/core',
-        '@angular/common'
+        '@angular/http',
+        '@ionic/storage',
+        'rxjs/Subject'
       ],
 
       // Format of generated bundle
