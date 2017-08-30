@@ -160,4 +160,22 @@ describe('CachedGet', () => {
     tick();
     expect(error.message).toBe('StorageError');
   }));
+
+  it('Should request with headers', fakeAsync(() => {
+    cg.hashCode('');
+    let result;
+    const mbSub = mb.connections.subscribe((conn: MockConnection) => {
+      conn.mockRespond(new Response(new ResponseOptions({
+        body: conn.request.headers
+      })));
+    });
+    cg.get('http://localhost', {'myheder': 'xxx'})
+      .map(x => JSON.parse(x))
+      .subscribe(x => {
+        result = x;
+      });
+    tick();
+    mbSub.unsubscribe();
+    expect(result).toMatchObject({'myheder': ['xxx']});
+  }));
 });
