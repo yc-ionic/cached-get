@@ -1,6 +1,7 @@
-import { async, fakeAsync, tick, inject, TestBed } from '@angular/core/testing';
-import { BaseRequestOptions, Http, HttpModule, Response, ResponseOptions, ResponseType } from '@angular/http';
-import { MockBackend, MockConnection } from '@angular/http/testing';
+import { async, fakeAsync, tick, inject, TestBed, getTestBed } from '@angular/core/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+// import { BaseRequestOptions, Http, HttpModule, Response, ResponseOptions, ResponseType } from '@angular/http';
+// import { MockBackend, MockConnection } from '@angular/http/testing';
 import { Storage } from '@ionic/storage';
 import { CachedGet, CachedGetModule } from '../src/';
 import 'rxjs/add/operator/map';
@@ -16,8 +17,9 @@ describe('CachedGet', () => {
     clear: (): Promise<void> => Promise.resolve(window.localStorage.clear()),
     ready: (): Promise<void> => Promise.resolve()
   };
+  let injector: TestBed;
   let cg: CachedGet;
-  let mb: MockBackend;
+  let htc: HttpTestingController;
 
   beforeAll(() => {
     window.localStorage.clear();
@@ -25,27 +27,20 @@ describe('CachedGet', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      providers: [
-        MockBackend,
-        BaseRequestOptions,
-        {
-          provide: Http,
-          useFactory: (backend, options) => new Http(backend, options),
-          deps: [MockBackend, BaseRequestOptions]
-        },
-        { provide: Storage, useValue: storageStub }
-      ],
       imports: [
-        HttpModule,
+        HttpClientTestingModule,
         CachedGetModule.forRoot()
-      ]
+      ],
+      providers: [{ provide: Storage, useValue: storageStub }],
     });
+    injector = getTestBed();
+    cg = injector.get(CachedGet);
+    htc = injector.get(HttpTestingController);
   }));
 
-  beforeEach(inject([CachedGet, MockBackend], (_cg, _mb) => {
-    cg = _cg;
-    mb = _mb;
-  }));
+  afterEach(() => {
+    htc.verify();
+  });
 
   it('should be defined', () => {
     expect(cg).toBeDefined();
@@ -53,34 +48,24 @@ describe('CachedGet', () => {
 
   it('Should get something', fakeAsync(() => {
     let result;
-    const mbSub = mb.connections.subscribe(conn => {
-      conn.mockRespond(new Response(new ResponseOptions({
-        body: {
-          content: 'ok'
-        }
-      })));
-    });
     cg.get('http://localhost')
       .map(x => JSON.parse(x))
       .subscribe(x => {
         result = x;
+        expect(result).toMatchObject({
+          content: 'ok'
+        });
       });
     tick();
-    mbSub.unsubscribe();
-    expect(result).toMatchObject({
+    const req = htc.expectOne('http://localhost')
+    expect(req.request.method).toBe('GET');
+    req.flush({
       content: 'ok'
     });
   }));
 
   it('Should use cashed data', fakeAsync(() => {
     let results = [];
-    const mbSub = mb.connections.subscribe((conn: MockConnection) => {
-      conn.mockRespond(new Response(new ResponseOptions({
-        body: {
-          content: 'ok'
-        },
-      })));
-    });
 
     cg.get('http://localhost')
       .map(x => JSON.parse(x))
@@ -89,7 +74,9 @@ describe('CachedGet', () => {
       });
 
     tick();
-    mbSub.unsubscribe();
+    htc.expectOne('http://localhost').flush({
+      content: 'ok'
+    });
     expect(results).toMatchObject([
       {
         content: 'ok'
@@ -99,14 +86,6 @@ describe('CachedGet', () => {
 
   it('Should use cached data and new data', fakeAsync(() => {
     let results = [];
-    const mbSub = mb.connections.subscribe((conn: MockConnection) => {
-      conn.mockRespond(new Response(new ResponseOptions({
-        body: {
-          content: 'ok again'
-        }
-      })));
-    });
-
     cg.get('http://localhost')
       .map(x => JSON.parse(x))
       .subscribe(x => {
@@ -114,7 +93,9 @@ describe('CachedGet', () => {
       });
 
     tick();
-    mbSub.unsubscribe();
+    htc.expectOne('http://localhost').flush({
+      content: 'ok again'
+    });
     expect(results).toMatchObject([
       {
         content: 'ok'
@@ -126,27 +107,16 @@ describe('CachedGet', () => {
   }));
 
   it('Should throw an http error', fakeAsync(() => {
-    class MockError extends Response implements Error {
-      name: any
-      message: any
-    }
-    const mbSub = mb.connections.subscribe((conn: MockConnection) => {
-      conn.mockError(new MockError(new ResponseOptions({
-        body: 'Not Found',
-        type: ResponseType.Error,
-        status: 404
-      })));
-    });
-
     let error;
     cg.get('http://localhost/not-found')
       .map(x => JSON.parse(x))
       .subscribe(x => { }, e => {
         error = e;
       });
-
     tick();
-    mbSub.unsubscribe();
+    htc.expectOne('http://localhost/not-found').error(new ErrorEvent('Not Found'), {
+      status: 404
+    });
     expect(error.status).toBe(404);
   }));
 
@@ -162,20 +132,22 @@ describe('CachedGet', () => {
   }));
 
   it('Should request with headers', fakeAsync(() => {
-    cg.hashCode('');
     let result;
-    const mbSub = mb.connections.subscribe((conn: MockConnection) => {
-      conn.mockRespond(new Response(new ResponseOptions({
-        body: conn.request.headers
-      })));
-    });
-    cg.get('http://localhost', {'myheder': 'xxx'})
+    cg.get('http://localhost', { myheder: 'xxx'})
       .map(x => JSON.parse(x))
       .subscribe(x => {
         result = x;
       });
     tick();
-    mbSub.unsubscribe();
-    expect(result).toMatchObject({'myheder': ['xxx']});
+    const req = htc.expectOne('http://localhost');
+    expect(req.request.headers).toMatchObject({
+      myheder: 'xxx'
+    });
+    req.flush({
+      content: 'ok'
+    })
+    expect(result).toMatchObject({
+      content: 'ok'
+    });
   }));
 });
