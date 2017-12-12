@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs/Subject';
-import { Http, Headers } from '@angular/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Storage } from '@ionic/storage';
 
 @Injectable()
 export class CachedGet {
-  constructor(private http: Http, private storage: Storage
+  constructor(private http: HttpClient, private storage: Storage
   ) { }
 
   private hashCode(headers) {
@@ -24,11 +24,11 @@ export class CachedGet {
     this.getCache(url + this.hashCode(headers))
       .then(cache => {
         if (cache) sub.next(cache);
-        this.http.get(url, { headers: headers })
+        this.http.get(url, { headers: headers, responseType: 'text' })
           .subscribe(res => {
-            if (cache !== res.text()) {
-              this.storage.set(url + this.hashCode(headers), res.text());
-              sub.next(res.text());
+            if (cache !== res) {
+              this.storage.set(url + this.hashCode(headers), res);
+              sub.next(res);
             }
             sub.complete();
           }, error => {
